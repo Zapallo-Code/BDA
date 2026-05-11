@@ -34,6 +34,9 @@ Probamos ponerle índice a `type` (5 valores nomás) y a `amount` (montos altos)
 El índice **empeoró** todo. El tema es que `type` tiene solo 5 valores, el índice no ayuda casi. Y con `amount > 500000` devuelve como 340 mil filas, que son muchas. El Bitmap Heap Scan termina siendo más lento que leer todo secuencialmente.
 
 **A.1 — Sin índice:**
+```sql
+SELECT COUNT(*), AVG(amount) FROM transactions WHERE type = 'TRANSFER';
+```
 ```
 Parallel Seq Scan on transactions
   Filter: (type = 'TRANSFER')
@@ -43,6 +46,8 @@ Execution Time: 242.400 ms
 ```
 
 **A.3 — Con índice:**
+```sql
+SELECT COUNT(*), AVG(amount) FROM transactions WHERE type = 'TRANSFER';
 ```
 Parallel Bitmap Heap Scan on transactions
   Recheck Cond: (type = 'TRANSFER')
@@ -55,6 +60,8 @@ Execution Time: 324.241 ms
 ```
 
 **A.2 — Sin índice:**
+```sql
+SELECT * FROM transactions WHERE amount > 500000;
 ```
 Parallel Seq Scan on transactions
   Filter: (amount > 500000)
@@ -64,6 +71,8 @@ Execution Time: 288.974 ms
 ```
 
 **A.4 — Con índice:**
+```sql
+SELECT * FROM transactions WHERE amount > 500000;
 ```
 Bitmap Heap Scan on transactions
   Recheck Cond: (amount > 500000)
@@ -90,6 +99,10 @@ Probamos un índice en dos columnas juntas `(type, amount)`.
 | Con columna que no está en el índice | Bitmap Heap Scan | 932 ms |
 
 **B.1 — Sin índice compuesto:**
+```sql
+SELECT type, amount, oldbalance_org
+FROM transactions
+WHERE type = 'CASH_OUT' AND amount > 100000;
 ```
 Seq Scan on transactions
   Filter: ((amount > 100000) AND (type = 'CASH_OUT'))
@@ -99,6 +112,10 @@ Execution Time: 926.854 ms
 ```
 
 **B.2 — Index Only Scan:**
+```sql
+SELECT type, amount
+FROM transactions
+WHERE type = 'CASH_OUT' AND amount > 100000;
 ```
 Index Only Scan using idx_transactions_type_amount
   Index Cond: (type = 'CASH_OUT' AND amount > 100000)
@@ -108,6 +125,10 @@ Execution Time: 385.501 ms
 ```
 
 **B.3 — Bitmap Heap Scan (pidiendo columna del heap):**
+```sql
+SELECT type, amount, oldbalance_org
+FROM transactions
+WHERE type = 'CASH_OUT' AND amount > 100000;
 ```
 Bitmap Heap Scan on transactions
   Recheck Cond: ((type = 'CASH_OUT') AND (amount > 100000))
@@ -126,6 +147,9 @@ Cuando todas las columnas del SELECT están en el índice, PostgreSQL ni toca la
 ### C: Bitmap scans
 
 **C.1 —** Buscar montos entre 100 y 10000. Devuelve como 1.27M de filas (~20%).
+```sql
+SELECT * FROM transactions WHERE amount BETWEEN 100 AND 10000;
+```
 ```
 Seq Scan on transactions
   Filter: ((amount >= 100) AND (amount <= 10000))
@@ -136,6 +160,9 @@ Execution Time: 929.022 ms
 PostgreSQL usó Seq Scan directamente, sabiamente. Con índice sería un desastre porque tendría que saltar por toda la tabla.
 
 **C.2 —** Buscar `type = 'TRANSFER' OR amount > 800000`.
+```sql
+SELECT * FROM transactions WHERE type = 'TRANSFER' OR amount > 800000;
+```
 ```
 Bitmap Heap Scan on transactions
   Recheck Cond: ((type = 'TRANSFER') OR (amount > 800000))
@@ -199,6 +226,9 @@ Redundancias que encontramos:
 | **Con índice** | **0.94 ms** | **13** |
 
 **F.1 — Sin índice:**
+```sql
+SELECT COUNT(*) FROM transactions WHERE is_fraud = true;
+```
 ```
 Parallel Seq Scan on transactions
   Filter: is_fraud
@@ -208,6 +238,9 @@ Execution Time: 228.173 ms
 ```
 
 **F.2 — Con índice:**
+```sql
+SELECT COUNT(*) FROM transactions WHERE is_fraud = true;
+```
 ```
 Index Only Scan using idx_transactions_fraud on transactions
   Index Cond: (is_fraud = true)
@@ -228,6 +261,9 @@ Misma columna `is_fraud`, pero pidiendo `amount`, `oldbalance_org` y `newbalance
 |---|---|---|
 | Con índice (Index Scan) | **10.3 ms** | 2,106 |
 
+```sql
+SELECT amount, oldbalance_org, newbalance_orig FROM transactions WHERE is_fraud = true;
+```
 ```
 Index Scan using idx_transactions_fraud on transactions
   Index Cond: (is_fraud = true)
@@ -250,6 +286,9 @@ Probamos ambos tipos de índice para buscar por `name_orig` exacto (`C1305486145
 | Con B-tree | Index Scan | **0.061 ms** |
 
 **H.1 — Sin índice:**
+```sql
+SELECT * FROM transactions WHERE name_orig = 'C1305486145';
+```
 ```
 Parallel Seq Scan on transactions
   Filter: (name_orig = 'C1305486145')
@@ -259,6 +298,9 @@ Execution Time: 227.770 ms
 ```
 
 **H.2 — Con Hash:**
+```sql
+SELECT * FROM transactions WHERE name_orig = 'C1305486145';
+```
 ```
 Index Scan using idx_h_name_hash on transactions
   Index Cond: (name_orig = 'C1305486145')
@@ -267,6 +309,9 @@ Execution Time: 0.063 ms
 ```
 
 **H.3 — Con B-tree:**
+```sql
+SELECT * FROM transactions WHERE name_orig = 'C1305486145';
+```
 ```
 Index Scan using idx_h_name_hash on transactions
   Index Cond: (name_orig = 'C1305486145')
@@ -290,6 +335,9 @@ Probamos BRIN en `step` (que va de 1 a 743 en orden).
 | **Con BRIN** | **289 ms** | 16,690 |
 
 **I.1 — Sin índice:**
+```sql
+SELECT * FROM transactions WHERE step BETWEEN 100 AND 200;
+```
 ```
 Seq Scan on transactions
   Filter: ((step >= 100) AND (step <= 200))
@@ -299,6 +347,9 @@ Execution Time: 482.729 ms
 ```
 
 **I.2 — Con BRIN:**
+```sql
+SELECT * FROM transactions WHERE step BETWEEN 100 AND 200;
+```
 ```
 Bitmap Heap Scan on transactions
   Recheck Cond: ((step >= 100) AND (step <= 200))
@@ -332,6 +383,9 @@ Creamos un índice solo para las filas donde `is_fraud = true`.
 | **Con índice parcial** | **1.06 ms** |
 
 **J.1 — Sin índice parcial:**
+```sql
+SELECT COUNT(*), AVG(amount) FROM transactions WHERE is_fraud = true AND amount > 500000;
+```
 ```
 Aggregate
   Buffers: shared hit=338 read=1768
@@ -344,6 +398,9 @@ Execution Time: 12.422 ms
 ```
 
 **J.2 — Con índice parcial:**
+```sql
+SELECT COUNT(*), AVG(amount) FROM transactions WHERE is_fraud = true AND amount > 500000;
+```
 ```
 Aggregate
   Buffers: shared hit=1129 read=16
@@ -374,6 +431,9 @@ Probamos un índice sobre `LOWER(type)` para búsquedas sin importar mayúsculas
 | **Con índice** | **1078 ms** (Bitmap) |
 
 **K.1 — Sin índice funcional:**
+```sql
+SELECT * FROM transactions WHERE LOWER(type) = 'transfer';
+```
 ```
 Parallel Seq Scan on transactions
   Filter: (lower(type) = 'transfer'::text)
@@ -383,6 +443,9 @@ Execution Time: 711.806 ms
 ```
 
 **K.2 — Con índice funcional:**
+```sql
+SELECT * FROM transactions WHERE LOWER(type) = 'transfer';
+```
 ```
 Bitmap Heap Scan on transactions
   Recheck Cond: (lower(type) = 'transfer'::text)
@@ -408,6 +471,9 @@ Agregamos `oldbalance_org` al índice con `INCLUDE` para no tener que ir al heap
 | **Con covering (Index Only Scan)** | **395 ms** |
 
 **L.1 — Sin covering:**
+```sql
+SELECT type, amount, oldbalance_org FROM transactions WHERE type = 'CASH_OUT' AND amount > 100000;
+```
 ```
 Bitmap Heap Scan on transactions
   Recheck Cond: ((type = 'CASH_OUT') AND (amount > 100000))
@@ -420,6 +486,9 @@ Execution Time: 988.037 ms
 ```
 
 **L.2 — Con covering:**
+```sql
+SELECT type, amount, oldbalance_org FROM transactions WHERE type = 'CASH_OUT' AND amount > 100000;
+```
 ```
 Index Only Scan using idx_l_covering on transactions
   Index Cond: (type = 'CASH_OUT' AND amount > 100000)
@@ -442,6 +511,9 @@ Usamos la extensión `pg_trgm` para buscar por patrones con `LIKE '%texto%'` en 
 | **Con GIN** | **6.3 ms** |
 
 **M.1 — Sin índice GIN:**
+```sql
+SELECT * FROM transactions WHERE name_orig LIKE '%1305486%';
+```
 ```
 Parallel Seq Scan on transactions
   Filter: (name_orig ~~ '%1305486%'::text)
@@ -451,6 +523,9 @@ Execution Time: 339.453 ms
 ```
 
 **M.2 — Con GIN:**
+```sql
+SELECT * FROM transactions WHERE name_orig LIKE '%1305486%';
+```
 ```
 Bitmap Heap Scan on transactions
   Recheck Cond: (name_orig ~~ '%1305486%'::text)
@@ -475,6 +550,9 @@ Misma extensión pero con GiST para búsqueda por similitud (operador `%`).
 | **Con GiST** | **GiST** | **1751 ms** |
 
 **N.1 — Con GIN (aún presente de M):**
+```sql
+SELECT * FROM transactions WHERE name_orig % 'C1305486';
+```
 ```
 Bitmap Heap Scan on transactions
   Recheck Cond: (name_orig % 'C1305486')
@@ -486,6 +564,9 @@ Execution Time: 4168.219 ms
 ```
 
 **N.2 — Con GiST:**
+```sql
+SELECT * FROM transactions WHERE name_orig % 'C1305486';
+```
 ```
 Bitmap Heap Scan on transactions
   Recheck Cond: (name_orig % 'C1305486')
