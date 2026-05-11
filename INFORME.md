@@ -30,8 +30,8 @@ Probamos ponerle índice a `type` (5 valores nomás) y a `amount` (montos altos)
 
 | Query | Sin índice | Con índice | Qué pasó |
 |---|---|---|---|
-| type = 'TRANSFER' | 242 ms (Seq Scan) | 324 ms (Bitmap) | ❌ más lento |
-| amount > 500000 | 289 ms (Seq Scan) | 674 ms (Bitmap) | ❌ mucho más lento |
+| type = 'TRANSFER' | 242 ms (Seq Scan) | 324 ms (Bitmap) |  más lento |
+| amount > 500000 | 289 ms (Seq Scan) | 674 ms (Bitmap) |  mucho más lento |
 
 El índice **empeoró** todo. El tema es que `type` tiene solo 5 valores, el índice no ayuda casi. Y con `amount > 500000` devuelve como 340 mil filas, que son muchas. El Bitmap Heap Scan termina siendo más lento que leer todo secuencialmente.
 
@@ -47,20 +47,6 @@ Parallel Seq Scan on transactions
 Execution Time: 242.400 ms
 ```
 
-**A.3 — Con índice:**
-```sql
-SELECT COUNT(*), AVG(amount) FROM transactions WHERE type = 'TRANSFER';
-```
-Parallel Bitmap Heap Scan on transactions
-  Recheck Cond: (type = 'TRANSFER')
-  Rows Removed by Index Recheck: 799,752
-  Heap Blocks: exact=12750 lossy=10662
-  Buffers: shared hit=1 read=72774
-  ->  Bitmap Index Scan on idx_transactions_type
-        Buffers: shared read=458
-Execution Time: 324.241 ms
-```
-
 **A.2 — Sin índice:**
 ```sql
 SELECT * FROM transactions WHERE amount > 500000;
@@ -71,6 +57,21 @@ Parallel Seq Scan on transactions
   Rows Removed by Filter: 2,007,445
   Buffers: shared hit=10865 read=69103
 Execution Time: 288.974 ms
+```
+
+**A.3 — Con índice:**
+```sql
+SELECT COUNT(*), AVG(amount) FROM transactions WHERE type = 'TRANSFER';
+```
+```
+Parallel Bitmap Heap Scan on transactions
+  Recheck Cond: (type = 'TRANSFER')
+  Rows Removed by Index Recheck: 799,752
+  Heap Blocks: exact=12750 lossy=10662
+  Buffers: shared hit=1 read=72774
+  ->  Bitmap Index Scan on idx_transactions_type
+        Buffers: shared read=458
+Execution Time: 324.241 ms
 ```
 
 **A.4 — Con índice:**
@@ -598,21 +599,21 @@ GiST fue 2.4× más rápido para similitud, pero ocupa 4× más espacio. Para `L
 
 | Experimento | Tipo de índice | Sin índice | Con índice | Mejora |
 |---|---|---|---|---|
-| A (type) | B-tree simple | 242 ms | 324 ms | ❌ peor |
-| A (amount) | B-tree simple | 289 ms | 674 ms | ❌ peor |
-| B (solo índice) | B-tree compuesto | 927 ms | **386 ms** | ✅ 2.4× |
+| A (type) | B-tree simple | 242 ms | 324 ms |  peor |
+| A (amount) | B-tree simple | 289 ms | 674 ms |  peor |
+| B (solo índice) | B-tree compuesto | 927 ms | **386 ms** |  2.4× |
 | B (con heap) | B-tree compuesto | 927 ms | 932 ms | ~ igual |
-| C (OR) | BitmapOr | — | **773 ms** | ✅ |
-| F (is_fraud) | B-tree | 228 ms | **0.94 ms** | ✅ **243×** |
-| G (heap cols) | B-tree | 228 ms | **10.3 ms** | ✅ 22× |
-| H (name_orig) | Hash | 228 ms | **0.063 ms** | ✅ ~3600× |
-| H (name_orig) | B-tree | 228 ms | **0.061 ms** | ✅ ~3700× |
-| I (step) | BRIN | 483 ms | **289 ms** | ✅ 1.7× |
-| J (fraud+amount) | Parcial | 12.4 ms | **1.06 ms** | ✅ 12× |
-| K (LOWER) | Funcional | 712 ms | 1078 ms | ❌ peor |
-| L (covering) | INCLUDE | 988 ms | **395 ms** | ✅ 2.5× |
-| M (LIKE) | GIN | 339 ms | **6.3 ms** | ✅ **54×** |
-| N (similitud) | GiST | 4168 ms | **1751 ms** | ✅ 2.4× |
+| C (OR) | BitmapOr | — | **773 ms** |  |
+| F (is_fraud) | B-tree | 228 ms | **0.94 ms** |  **243×** |
+| G (heap cols) | B-tree | 228 ms | **10.3 ms** |  22× |
+| H (name_orig) | Hash | 228 ms | **0.063 ms** |  ~3600× |
+| H (name_orig) | B-tree | 228 ms | **0.061 ms** |  ~3700× |
+| I (step) | BRIN | 483 ms | **289 ms** |  1.7× |
+| J (fraud+amount) | Parcial | 12.4 ms | **1.06 ms** |  12× |
+| K (LOWER) | Funcional | 712 ms | 1078 ms |  peor |
+| L (covering) | INCLUDE | 988 ms | **395 ms** |  2.5× |
+| M (LIKE) | GIN | 339 ms | **6.3 ms** |  **54×** |
+| N (similitud) | GiST | 4168 ms | **1751 ms** |  2.4× |
 
 ---
 
