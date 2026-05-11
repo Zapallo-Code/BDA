@@ -1,6 +1,7 @@
 # BDA — Indexación en PostgreSQL
 
 **Integrantes:** Valentin Rubio, Pablo Geyer, Luciano Castro, Santiago Oses, Santiago Calzolari
+**Team:** Zapallo Code
 
 ## Requisitos
 
