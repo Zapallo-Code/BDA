@@ -65,6 +65,7 @@ Execution Time: 324.241 ms
 ```sql
 SELECT * FROM transactions WHERE amount > 500000;
 ```
+```
 Parallel Seq Scan on transactions
   Filter: (amount > 500000)
   Rows Removed by Filter: 2,007,445
@@ -75,6 +76,7 @@ Execution Time: 288.974 ms
 **A.4 — Con índice:**
 ```sql
 SELECT * FROM transactions WHERE amount > 500000;
+```
 ```
 Bitmap Heap Scan on transactions
   Recheck Cond: (amount > 500000)
@@ -106,6 +108,7 @@ SELECT type, amount, oldbalance_org
 FROM transactions
 WHERE type = 'CASH_OUT' AND amount > 100000;
 ```
+```
 Seq Scan on transactions
   Filter: ((amount > 100000) AND (type = 'CASH_OUT'))
   Rows Removed by Filter: 4,899,189
@@ -119,6 +122,7 @@ SELECT type, amount
 FROM transactions
 WHERE type = 'CASH_OUT' AND amount > 100000;
 ```
+```
 Index Only Scan using idx_transactions_type_amount
   Index Cond: (type = 'CASH_OUT' AND amount > 100000)
   Heap Fetches: 0
@@ -131,6 +135,7 @@ Execution Time: 385.501 ms
 SELECT type, amount, oldbalance_org
 FROM transactions
 WHERE type = 'CASH_OUT' AND amount > 100000;
+```
 ```
 Bitmap Heap Scan on transactions
   Recheck Cond: ((type = 'CASH_OUT') AND (amount > 100000))
