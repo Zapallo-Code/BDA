@@ -1,6 +1,7 @@
 # Informe
 
-**Grupo:** Valentin Rubio, Luciano Castro, Santiago Oses, Santiago Calzolari, Pablo Geyer
+**Integrantes del Team:** Valentin Rubio, Luciano Castro, Santiago Oses, Santiago Calzolari, Pablo Geyer
+**Nombre del Team:** Zapallo Code
 
 ---
 
